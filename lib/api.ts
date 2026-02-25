@@ -151,10 +151,15 @@ async function apiPost(action: string, body: unknown) {
   console.log("[v0] POST to Google Apps Script:", action, body)
   
   try {
+    // Google Apps Script requires form-urlencoded content type for CORS to work
+    // Convert the body to form data
+    const formData = new URLSearchParams()
+    formData.append("action", action)
+    formData.append("body", JSON.stringify(body))
+    
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...body }),
+      body: formData,
     })
     if (!res.ok) {
       console.log("[v0] API error:", res.status, res.statusText)

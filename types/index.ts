@@ -44,6 +44,7 @@ export interface BloqueHorario {
   materiaId: string
   docenteId: string
   grupo?: "A" | "B" | null
+  condicion?: Condicion // Titular, Suplente, Provisional
 }
 
 export interface HorarioCompleto {
