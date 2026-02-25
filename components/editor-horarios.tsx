@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -166,6 +167,7 @@ export function EditorHorarios({
   const [formMateria, setFormMateria] = useState("")
   const [formDocente, setFormDocente] = useState("")
   const [formGrupo, setFormGrupo] = useState<"A" | "B" | "">("")
+  const [formCondicion, setFormCondicion] = useState<"titular" | "suplente" | "provisional" | "">("")
   const [dragConflict, setDragConflict] = useState("")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -194,11 +196,12 @@ export function EditorHorarios({
   function openDialog(diaIndex: number, moduloId: string) {
     const existing = getBloque(diaIndex, moduloId)
     setEditingCell({ diaIndex, moduloId })
-    setFormMateria(existing?.materiaId ?? "")
-    setFormDocente(existing?.docenteId ?? "")
-    setFormGrupo(existing?.grupo ?? "")
-    setDragConflict("")
-    setDialogOpen(true)
+  setFormMateria(existing?.materiaId ?? "")
+  setFormDocente(existing?.docenteId ?? "")
+  setFormGrupo(existing?.grupo ?? "")
+  setFormCondicion(existing?.condicion ?? "")
+  setDragConflict("")
+  setDialogOpen(true)
   }
 
   function handleSaveCell() {
@@ -220,6 +223,7 @@ export function EditorHorarios({
       materiaId: formMateria,
       docenteId: formDocente,
       grupo: materia?.tieneSubgrupos && formGrupo ? (formGrupo as "A" | "B") : null,
+      condicion: (formCondicion as "titular" | "suplente" | "provisional") || undefined,
     }
 
     setBloques((prev) => {
@@ -283,11 +287,10 @@ export function EditorHorarios({
   }
 
   const selectedMateria = materias.find((m) => m.id === formMateria)
-  const filteredDocentes = formMateria
-    ? docentes.filter((d) => 
-        docenteMateriaAsignaciones.some(a => a.docenteId === d.id && a.materiaId === formMateria)
-      )
-    : docentes
+  // Show all teachers - condition (Titular/Suplente/Provisional) varies by course, not by subject
+  const filteredDocentes = docentes
+
+
 
   return (
     <div className="max-w-screen-xl mx-auto px-4 py-8 flex flex-col gap-6">
@@ -366,7 +369,9 @@ export function EditorHorarios({
               </tr>
             </thead>
             <tbody>
-              {modulos.map((modulo, rowIdx) => {
+              {modulos
+                .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))
+                .map((modulo, rowIdx) => {
                 const isRecreo = modulo.tipo === "recreo"
                 return (
                   <tr
@@ -415,13 +420,13 @@ export function EditorHorarios({
                           onClick={() => !isRecreo && openDialog(diaIndex, modulo.id)}
                         >
                           {bloque && (
-                            <DraggableBloque
-                              bloque={bloque}
-                              materia={materia}
-                              docente={docente}
-                              condicion={getDocenteCondicion(bloque.docenteId, bloque.materiaId, docenteMateriaAsignaciones)}
-                              onRemove={() => handleRemoveBloque(bloque.id)}
-                            />
+                <DraggableBloque
+                  bloque={bloque}
+                  materia={materia}
+                  docente={docente}
+                  condicion={bloque.condicion || getDocenteCondicion(bloque.docenteId, bloque.materiaId, docenteMateriaAsignaciones)}
+                  onRemove={() => handleRemoveBloque(bloque.id)}
+                />
                           )}
                         </DroppableCell>
                       )
@@ -450,15 +455,18 @@ export function EditorHorarios({
       {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-lg">
-              {editingCell
-                ? `${DIAS[editingCell.diaIndex]} – ${modulos.find((m) => m.id === editingCell.moduloId)?.horaInicio}`
-                : "Asignar clase"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-4 py-2">
+  <DialogHeader>
+  <DialogTitle className="font-serif text-lg">
+  {editingCell
+  ? `${DIAS[editingCell.diaIndex]} – ${modulos.find((m) => m.id === editingCell.moduloId)?.horaInicio}`
+  : "Asignar clase"}
+  </DialogTitle>
+  <DialogDescription>
+  Selecciona la materia y docente para asignar a este módulo.
+  </DialogDescription>
+  </DialogHeader>
+  
+  <div className="flex flex-col gap-4 py-2">
             <div className="flex flex-col gap-1.5">
               <Label>Materia</Label>
               <Select
@@ -514,6 +522,23 @@ export function EditorHorarios({
                 </Select>
               </div>
             )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Condición del Docente</Label>
+              <Select 
+                value={formCondicion} 
+                onValueChange={(v) => setFormCondicion(v as "titular" | "suplente" | "provisional" | "")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar condición" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="titular">Titular</SelectItem>
+                  <SelectItem value="suplente">Suplente</SelectItem>
+                  <SelectItem value="provisional">Provisional</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {dragConflict && (
               <p className="text-sm text-destructive font-medium">{dragConflict}</p>
