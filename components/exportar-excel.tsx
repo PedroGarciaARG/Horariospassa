@@ -5,6 +5,7 @@ import { ChevronLeft, FileSpreadsheet, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Docente, Materia, Curso, Modulo, BloqueHorario } from "@/types"
 import { DIAS } from "@/types"
+import { formatHora } from "@/lib/utils"
 
 interface ExportarExcelProps {
   docentes: Docente[]
@@ -31,7 +32,7 @@ export function ExportarExcel({ docentes, materias, cursos, modulos, bloques, on
         const rows = claseMods.map((mod) => {
           const row: (string | number)[] = [
             `Mód. ${mod.numero}`,
-            `${mod.horaInicio} – ${mod.horaFin}`,
+            `${formatHora(mod.horaInicio)} – ${formatHora(mod.horaFin)}`,
           ]
           DIAS.forEach((_, diaIndex) => {
             const bloque = bloques.find(
@@ -61,7 +62,7 @@ export function ExportarExcel({ docentes, materias, cursos, modulos, bloques, on
         const rows = claseMods.map((mod) => {
           const row: (string | number)[] = [
             `Mód. ${mod.numero}`,
-            `${mod.horaInicio} – ${mod.horaFin}`,
+            `${formatHora(mod.horaInicio)} – ${formatHora(mod.horaFin)}`,
           ]
           DIAS.forEach((_, diaIndex) => {
             const bloque = bloques.find(

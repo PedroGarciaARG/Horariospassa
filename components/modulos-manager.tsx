@@ -8,6 +8,7 @@ import { Trash2, Edit2, Plus, ChevronLeft } from 'lucide-react'
 import { createModulo, updateModulo, deleteModulo } from '@/lib/api'
 import { MODULO_TIPO_LABELS, MODULO_TIPO_COLORS } from '@/types'
 import type { Modulo } from '@/types'
+import { formatHora } from '@/lib/utils'
 
 interface ModulosManagerProps {
   modulos: Modulo[]
@@ -41,8 +42,8 @@ export function ModulosManager({ modulos, onModulosChange, onBack }: ModulosMana
     setEditingId(modulo.id)
     setFormData({
       numero: modulo.numero,
-      horaInicio: modulo.horaInicio,
-      horaFin: modulo.horaFin,
+      horaInicio: formatHora(modulo.horaInicio),
+      horaFin: formatHora(modulo.horaFin),
       tipo: modulo.tipo,
       etiqueta: modulo.etiqueta || '',
     })
@@ -72,21 +73,21 @@ export function ModulosManager({ modulos, onModulosChange, onBack }: ModulosMana
         horaInicio: formData.horaInicio,
         horaFin: formData.horaFin,
         tipo: formData.tipo,
-        ...(formData.etiqueta && { etiqueta: formData.etiqueta }),
+        etiqueta: formData.tipo === 'recreo' ? (formData.etiqueta || 'RECREO') : (formData.etiqueta || ''),
       }
 
       if (editingId === 'new') {
         const newModulo = await createModulo(data)
-        if (newModulo) {
-          const sorted = [...modulos, newModulo].sort((a, b) => a.numero - b.numero)
-          onModulosChange(sorted)
-        }
+        // Always update local state
+        const moduloToAdd: Modulo = newModulo ?? { id: `mod_${Date.now()}`, ...data }
+        const sorted = [...modulos, moduloToAdd].sort((a, b) => a.numero - b.numero)
+        onModulosChange(sorted)
       } else if (editingId) {
-        const updated = await updateModulo(editingId, data)
-        if (updated) {
-          const sorted = modulos.map(m => m.id === editingId ? updated : m).sort((a, b) => a.numero - b.numero)
-          onModulosChange(sorted)
-        }
+        await updateModulo(editingId, data)
+        // Always update local state with the form data
+        const updatedModulo: Modulo = { id: editingId, ...data }
+        const sorted = modulos.map(m => m.id === editingId ? updatedModulo : m).sort((a, b) => a.numero - b.numero)
+        onModulosChange(sorted)
       }
       handleCancel()
     } catch (err) {
@@ -215,23 +216,35 @@ export function ModulosManager({ modulos, onModulosChange, onBack }: ModulosMana
             No hay módulos. Crea uno para comenzar.
           </Card>
         ) : (
-          sortedModulos.map((modulo) => (
+          sortedModulos.map((modulo) => {
+            const tipoKey = modulo.tipo || 'clase'
+            const colorClass = MODULO_TIPO_COLORS[tipoKey] || MODULO_TIPO_COLORS.clase
+            const tipoLabel = MODULO_TIPO_LABELS[tipoKey] || tipoKey
+            const isRecreo = tipoKey === 'recreo'
+
+            return (
             <Card
               key={modulo.id}
-              className={`p-4 border flex items-center justify-between ${MODULO_TIPO_COLORS[modulo.tipo]}`}
+              className={`p-4 border flex items-center justify-between ${colorClass}`}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <div className="bg-current/20 rounded px-3 py-1 font-semibold">
-                    {modulo.numero}
-                  </div>
+                  {isRecreo ? (
+                    <div className="rounded px-3 py-1 font-semibold text-sm" style={{ background: "#e5e7eb", color: "#6b7280" }}>
+                      {modulo.etiqueta || 'RECREO'}
+                    </div>
+                  ) : (
+                    <div className="rounded px-3 py-1 font-semibold" style={{ background: "#e0e7ff", color: "#3730a3" }}>
+                      {modulo.numero}
+                    </div>
+                  )}
                   <div>
                     <p className="font-medium">
-                      {modulo.horaInicio} - {modulo.horaFin}
+                      {formatHora(modulo.horaInicio)} - {formatHora(modulo.horaFin)}
                     </p>
                     <p className="text-sm opacity-75">
-                      {MODULO_TIPO_LABELS[modulo.tipo]}
-                      {modulo.etiqueta && ` • ${modulo.etiqueta}`}
+                      {tipoLabel}
+                      {modulo.etiqueta && !isRecreo ? ` \u2022 ${modulo.etiqueta}` : ''}
                     </p>
                   </div>
                 </div>
@@ -256,7 +269,8 @@ export function ModulosManager({ modulos, onModulosChange, onBack }: ModulosMana
                 </Button>
               </div>
             </Card>
-          ))
+            )
+          })
         )}
       </div>
     </div>

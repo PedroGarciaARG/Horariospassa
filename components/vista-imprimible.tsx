@@ -4,6 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronLeft, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatHora } from "@/lib/utils"
 import {
   Select,
   SelectContent,
@@ -34,12 +35,13 @@ export function VistaImprimible({
   const [selectedCursoId, setSelectedCursoId] = useState(cursos[0]?.id ?? "")
   const selectedCurso = cursos.find((c) => c.id === selectedCursoId)
 
-  function getBloque(diaIndex: number, moduloId: string) {
-    return (
-      bloques.find(
-        (b) => b.cursoId === selectedCursoId && b.diaIndex === diaIndex && b.moduloId === moduloId
-      ) ?? null
+  function getBloquesForCell(diaIndex: number, moduloId: string) {
+    return bloques.filter(
+      (b) => b.cursoId === selectedCursoId && b.diaIndex === diaIndex && b.moduloId === moduloId
     )
+  }
+  function getBloque(diaIndex: number, moduloId: string) {
+    return getBloquesForCell(diaIndex, moduloId)[0] ?? null
   }
 
   return (
@@ -138,14 +140,14 @@ export function VistaImprimible({
                         <span className="font-semibold text-xs" style={{ color: "#8B6914" }}>
                           {modulo.etiqueta ?? "Recreo"}
                           <span className="block font-normal text-gray-500">
-                            {modulo.horaInicio} – {modulo.horaFin}
+                            {formatHora(modulo.horaInicio)} – {formatHora(modulo.horaFin)}
                           </span>
                         </span>
                       ) : (
                         <div>
                           <span className="font-bold text-xs">Mód. {modulo.numero}</span>
                           <span className="block text-xs text-gray-500">
-                            {modulo.horaInicio} – {modulo.horaFin}
+                            {formatHora(modulo.horaInicio)} – {formatHora(modulo.horaFin)}
                           </span>
                         </div>
                       )}
@@ -158,27 +160,46 @@ export function VistaImprimible({
                           </td>
                         )
                       }
-                      const bloque = getBloque(diaIndex, modulo.id)
-                      const materia = materias.find((m) => m.id === bloque?.materiaId)
-                      const docente = docentes.find((d) => d.id === bloque?.docenteId)
+                      const cellBloques = getBloquesForCell(diaIndex, modulo.id)
+                      const printColors: Record<string, string> = { titular: "#1e40af", suplente: "#166534", provisional: "#991b1b" }
+                      const printLabels: Record<string, string> = { titular: "T", suplente: "S", provisional: "P" }
+
+                      function renderBloqueContent(bloque: typeof cellBloques[0]) {
+                        const mat = materias.find(m => m.id === bloque.materiaId)
+                        const entries: { docente: typeof docentes[0]; condicion: string }[] = []
+                        if (bloque.docentes && bloque.docentes.length > 0) {
+                          for (const da of bloque.docentes) {
+                            const d = docentes.find(doc => doc.id === da.docenteId)
+                            if (d) entries.push({ docente: d, condicion: da.condicion })
+                          }
+                        } else if (bloque.docenteId) {
+                          const d = docentes.find(doc => doc.id === bloque.docenteId)
+                          if (d) entries.push({ docente: d, condicion: bloque.condicion || "titular" })
+                        }
+                        return (
+                          <div>
+                            <p className="font-semibold text-xs leading-tight">
+                              {mat?.nombre ?? "---"}
+                              {bloque.grupo && <span className="ml-1 font-bold" style={{ color: bloque.grupo === "A" ? "#92400e" : "#5b21b6" }}>(Gr. {bloque.grupo})</span>}
+                            </p>
+                            {entries.map(({ docente: d, condicion }, i) => (
+                              <p key={d.id + i} className="text-xs leading-tight mt-0.5 font-medium" style={{ color: printColors[condicion] || "#374151" }}>
+                                {`${d.apellido}, ${d.nombre?.[0] ?? ""}.`}
+                                <span className="ml-1 text-[10px] opacity-70">({printLabels[condicion] || condicion})</span>
+                              </p>
+                            ))}
+                          </div>
+                        )
+                      }
+
                       return (
                         <td key={diaIndex} className="border border-gray-200 px-2 py-1.5 align-top min-w-[110px]">
-                          {bloque && materia ? (
-                            <div>
-                              <p className="font-semibold text-xs leading-tight">
-                                {materia.nombre}
-                              </p>
-                              <p className="text-xs text-gray-600 leading-tight mt-0.5">
-                                {docente
-                                  ? `${docente.apellido}, ${docente.nombre[0]}.`
-                                  : "—"}
-                              </p>
-                              {bloque.grupo && (
-                                <p className="text-xs font-semibold" style={{ color: "#0B6B2E" }}>
-                                  Gr. {bloque.grupo}
-                                </p>
-                              )}
+                          {cellBloques.length > 1 ? (
+                            <div className="flex flex-col gap-1 divide-y divide-gray-200">
+                              {cellBloques.map(b => <div key={b.id}>{renderBloqueContent(b)}</div>)}
                             </div>
+                          ) : cellBloques.length === 1 ? (
+                            renderBloqueContent(cellBloques[0])
                           ) : null}
                         </td>
                       )

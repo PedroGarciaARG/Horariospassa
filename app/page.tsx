@@ -16,7 +16,7 @@ import {
   fetchMaterias,
   fetchCursos,
   fetchModulos,
-  fetchBloques,
+  fetchAllBloques,
   fetchDocenteMateriaAsignaciones,
   MOCK_DOCENTES,
   MOCK_MATERIAS,
@@ -51,6 +51,20 @@ export default function Home() {
   const [bloques, setBloques] = useState<BloqueHorario[]>(MOCK_BLOQUES)
   const [dataLoading, setDataLoading] = useState(false)
 
+  // Function to refresh bloques from Google Drive
+  const refreshBloques = async () => {
+    console.log('[v0] Refreshing bloques from Google Drive...')
+    try {
+      const b = await fetchAllBloques()
+      if (b && b.length > 0) {
+        console.log('[v0] Bloques refreshed from Google Drive:', b)
+        setBloques(b)
+      }
+    } catch (err) {
+      console.error('[v0] Error refreshing bloques:', err)
+    }
+  }
+
   useEffect(() => {
     // Check if Google Script URL is configured
     if (typeof window !== 'undefined') {
@@ -65,15 +79,17 @@ export default function Home() {
   useEffect(() => {
     if (!isAuthenticated || !urlReady) return
     setDataLoading(true)
+    console.log('[v0] Loading data from Google Apps Script...')
     Promise.all([
       fetchDocentes(),
       fetchDocenteMateriaAsignaciones(),
       fetchMaterias(),
       fetchCursos(),
       fetchModulos(),
-      Promise.resolve(MOCK_BLOQUES),
+      fetchAllBloques(),
     ])
       .then(([d, dma, m, c, mod, b]) => {
+        console.log('[v0] Data loaded: docentes=', d?.length, 'bloques=', b?.length)
         if (d && d.length > 0) {
           console.log('[v0] Loaded data from Google Apps Script')
           setDocentes(d)
@@ -84,6 +100,7 @@ export default function Home() {
           setBloques(b || [])
         } else {
           console.log('[v0] No data from Google Apps Script, using mock data')
+          setBloques(MOCK_BLOQUES)
         }
       })
       .catch((err) => {
@@ -194,6 +211,7 @@ export default function Home() {
               <EditorHorarios
                 {...sharedProps}
                 initialBloques={bloques}
+                onBloquesSaved={refreshBloques}
               />
             )}
 

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { ChevronLeft, Clock, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatHora } from "@/lib/utils"
 import {
   Select,
   SelectContent,
@@ -13,6 +14,50 @@ import {
 import type { Docente, DocenteMateriaAsignacion, Materia, Curso, Modulo, BloqueHorario } from "@/types"
 import { DIAS, CONDICION_COLORS, CONDICION_LABELS } from "@/types"
 import { getDocenteCondicion } from "@/lib/api"
+
+const DOCENTE_BORDER_COLORS: Record<string, string> = {
+  titular: "#3b82f6", suplente: "#22c55e", provisional: "#ef4444",
+}
+const DOCENTE_BG_COLORS: Record<string, string> = {
+  titular: "#eff6ff", suplente: "#f0fdf4", provisional: "#fef2f2",
+}
+const DOCENTE_TEXT_COLORS: Record<string, string> = {
+  titular: "#1e40af", suplente: "#166534", provisional: "#991b1b",
+}
+
+function DocenteBloqueCell({ bloque, materia, curso, selectedDocenteId }: {
+  bloque: BloqueHorario
+  materia: Materia
+  curso: Curso | undefined
+  selectedDocenteId: string
+}) {
+  const entry = bloque.docentes?.find(da => da.docenteId === selectedDocenteId)
+  const cond = entry?.condicion || bloque.condicion || "titular"
+  return (
+    <div
+      className="rounded-lg border shadow-sm p-2"
+      style={{ borderLeftWidth: "3px", borderLeftColor: DOCENTE_BORDER_COLORS[cond], backgroundColor: DOCENTE_BG_COLORS[cond] }}
+    >
+      <p className="font-semibold text-xs leading-tight text-foreground">
+        {materia.nombre}
+      </p>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        {curso?.nombre}
+      </p>
+      <span
+        className="mt-1 inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded"
+        style={{ color: DOCENTE_TEXT_COLORS[cond], backgroundColor: `${DOCENTE_BORDER_COLORS[cond]}20` }}
+      >
+        {cond === "titular" ? "Titular" : cond === "suplente" ? "Suplente" : "Provisional"}
+      </span>
+      {bloque.grupo && (
+        <span className="ml-1 text-xs font-bold" style={{ color: "#0B6B2E" }}>
+          Gr. {bloque.grupo}
+        </span>
+      )}
+    </div>
+  )
+}
 
 interface VistaDocenteProps {
   docentes: Docente[]
@@ -36,7 +81,14 @@ export function VistaDocente({
   const [selectedDocenteId, setSelectedDocenteId] = useState(docentes[0]?.id ?? "")
 
   const docenteBloques = useMemo(
-    () => bloques.filter((b) => b.docenteId === selectedDocenteId),
+    () => bloques.filter((b) => {
+      // Check docentes array first (new format)
+      if (b.docentes && b.docentes.length > 0) {
+        return b.docentes.some(da => da.docenteId === selectedDocenteId)
+      }
+      // Fallback to legacy docenteId field
+      return b.docenteId === selectedDocenteId
+    }),
     [bloques, selectedDocenteId]
   )
 
@@ -196,7 +248,7 @@ export function VistaDocente({
                           <div>
                             <span className="font-bold text-xs text-foreground">Mód. {modulo.numero}</span>
                             <span className="block text-xs text-muted-foreground">
-                              {modulo.horaInicio} – {modulo.horaFin}
+                              {formatHora(modulo.horaInicio)} – {formatHora(modulo.horaFin)}
                             </span>
                           </div>
                         )}
@@ -218,19 +270,7 @@ export function VistaDocente({
                             className="border-r border-border last:border-r-0 p-1.5 align-top min-w-[120px]"
                           >
                             {bloque && materia ? (
-                              <div className="rounded-lg border bg-white shadow-sm p-2">
-                                <p className="font-semibold text-xs leading-tight text-foreground">
-                                  {materia.nombre}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {curso?.nombre}
-                                </p>
-                                {bloque.grupo && (
-                                  <span className="text-xs font-bold" style={{ color: "#0B6B2E" }}>
-                                    Grupo {bloque.grupo}
-                                  </span>
-                                )}
-                              </div>
+                              <DocenteBloqueCell bloque={bloque} materia={materia} curso={curso} selectedDocenteId={selectedDocenteId} />
                             ) : (
                               <div className="h-12 rounded-lg border border-dashed border-border/50" />
                             )}

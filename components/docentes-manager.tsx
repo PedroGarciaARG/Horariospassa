@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -18,15 +18,24 @@ export function DocentesManager({ docentes, onDocentesChange, onBack }: Docentes
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ nombre: '', apellido: '' })
   const [loading, setLoading] = useState(false)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  const scrollToForm = () => {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
 
   const handleAddNew = () => {
     setEditingId('new')
     setFormData({ nombre: '', apellido: '' })
+    scrollToForm()
   }
 
   const handleEdit = (docente: Docente) => {
     setEditingId(docente.id)
     setFormData({ nombre: docente.nombre, apellido: docente.apellido })
+    scrollToForm()
   }
 
   const handleCancel = () => {
@@ -47,14 +56,22 @@ export function DocentesManager({ docentes, onDocentesChange, onBack }: Docentes
           nombre: formData.nombre,
           apellido: formData.apellido,
         })
-        if (newDocente) {
-          onDocentesChange([...docentes, newDocente])
+        // Always update local state, even if backend call failed (offline/mock mode)
+        const docenteToAdd = newDocente ?? {
+          id: `d_${Date.now()}`,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
         }
+        onDocentesChange([...docentes, docenteToAdd])
       } else if (editingId) {
         const updated = await updateDocente(editingId, formData)
-        if (updated) {
-          onDocentesChange(docentes.map(d => d.id === editingId ? updated : d))
+        // Always update local state with the form data regardless of backend response
+        const docenteActualizado: Docente = updated ?? {
+          id: editingId,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
         }
+        onDocentesChange(docentes.map(d => d.id === editingId ? docenteActualizado : d))
       }
       handleCancel()
     } catch (err) {
@@ -83,7 +100,7 @@ export function DocentesManager({ docentes, onDocentesChange, onBack }: Docentes
   }
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto">
+    <div ref={formRef} className="space-y-4 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={onBack}>

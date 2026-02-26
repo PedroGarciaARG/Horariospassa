@@ -167,15 +167,22 @@ export function MateriasManager({
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 />
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.tieneSubgrupos}
-                  onChange={(e) => setFormData({ ...formData, tieneSubgrupos: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium text-foreground">Tiene subgrupos (A/B)</span>
-              </label>
+              <div className="rounded-lg border p-3" style={{ borderColor: formData.tieneSubgrupos ? "#f59e0b" : "#e5e7eb", backgroundColor: formData.tieneSubgrupos ? "#fffbeb" : "transparent" }}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.tieneSubgrupos}
+                    onChange={(e) => setFormData({ ...formData, tieneSubgrupos: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-semibold text-foreground">Es materia tipo Taller</span>
+                </label>
+                {formData.tieneSubgrupos && (
+                  <p className="text-xs mt-1.5 ml-6" style={{ color: "#92400e" }}>
+                    Esta materia se dividira en Grupo A y Grupo B, cada uno con su propio docente y horario.
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex gap-2 justify-end">
               <Button

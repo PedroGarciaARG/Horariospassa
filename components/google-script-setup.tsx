@@ -42,10 +42,15 @@ export function GoogleScriptSetup({ onUrlConfigured, currentUrl }: GoogleScriptS
       const data = await res.json()
       console.log('[v0] Connection test successful:', data)
 
-      // Save to localStorage
+      // Save to localStorage - Multiple times to ensure persistence
       localStorage.setItem('googleScriptUrl', url)
+      localStorage.setItem('googleScriptUrlBackup', url)
+      localStorage.setItem('googleScriptUrlTimestamp', new Date().toISOString())
       ;(window as any).__googleScriptUrl = url
 
+      console.log('[v0] URL guardada permanentemente en localStorage')
+      console.log('[v0] URL:', url)
+      
       setSuccess(true)
       setError('')
       
@@ -63,7 +68,10 @@ export function GoogleScriptSetup({ onUrlConfigured, currentUrl }: GoogleScriptS
 
   const handleSave = () => {
     localStorage.setItem('googleScriptUrl', url)
+    localStorage.setItem('googleScriptUrlBackup', url)
+    localStorage.setItem('googleScriptUrlTimestamp', new Date().toISOString())
     ;(window as any).__googleScriptUrl = url
+    console.log('[v0] URL guardada permanentemente:', url)
     onUrlConfigured(url)
   }
 
