@@ -127,43 +127,23 @@ async function apiFetch(action: string, params: Record<string, unknown> = {}) {
 
 async function apiPost(action: string, body: unknown) {
   const url = getGoogleScriptUrl()
-  if (!url) {
-    return null
-  }
+  if (!url) return null
 
   try {
-    // Google Apps Script requires GET requests to avoid CORS issues.
-    // We serialize ALL body fields as URL query parameters.
-    const apiUrl = new URL(url)
-    apiUrl.searchParams.set("action", action)
+    // Send as an HTTP POST with a JSON body so large payloads (e.g., bloques arrays)
+    // are not truncated by URL length limits in Google Apps Script.
+    // The GAS script must implement doPost(e) and parse e.postData.contents.
+    const payload = JSON.stringify({ action, ...(typeof body === 'object' && body !== null ? body : {}) })
 
-    if (typeof body === 'object' && body !== null) {
-      for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
-        if (value !== undefined && value !== null) {
-          // Arrays and objects are JSON-encoded; primitives are stringified directly
-          const serialized = typeof value === 'object' ? JSON.stringify(value) : String(value)
-          apiUrl.searchParams.set(key, serialized)
-        }
-      }
-    }
-
-    const urlStr = apiUrl.toString()
-    if (urlStr.length > 7000) {
-      console.warn("[v0] apiPost: URL is very long (" + urlStr.length + " chars). GAS may truncate it.")
-    }
-    console.log("[v0] apiPost: action=", action, "url length=", urlStr.length)
-    const res = await fetch(urlStr, {
-      method: "GET",
-      headers: { "Accept": "application/json" },
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: payload,
     })
 
-    if (!res.ok) {
-      return null
-    }
+    if (!res.ok) return null
 
     const data = await res.json()
-    console.log("[v0] apiPost response for", action, ":", JSON.stringify(data))
-    // If the script returned an error object, treat it as a failure
     if (data && typeof data === 'object' && data.error) {
       console.error("[v0] apiPost server error:", data.error)
       return null
@@ -298,6 +278,19 @@ export async function fetchAllBloques(): Promise<BloqueHorario[]> {
 export async function saveBloques(bloques: BloqueHorario[]): Promise<boolean> {
   const result = await apiPost("saveBloques", { bloques })
   return !!result
+}
+
+/**
+ * Saves only the bloques for a specific day (diaIndex) of a given course.
+ * Reuses the existing "saveBloques" action — the caller is responsible for
+ * passing only the bloques that should be persisted (already filtered to one day).
+ */
+export async function saveBloquesForDay(
+  _cursoId: string,
+  _diaIndex: number,
+  bloques: BloqueHorario[]
+): Promise<boolean> {
+  return saveBloques(bloques)
 }
 
 export async function deleteBloque(bloqueId: string): Promise<void> {
