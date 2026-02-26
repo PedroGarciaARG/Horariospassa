@@ -2,30 +2,24 @@ import type { Docente, DocenteMateriaAsignacion, Materia, Curso, Modulo, BloqueH
 
 // Get Google Script URL from window.__googleScriptUrl or localStorage
 function getGoogleScriptUrl() {
-  // Primero intenta desde window (que se setea en el hook)
   if (typeof window !== 'undefined') {
     const fromWindow = (window as any).__googleScriptUrl
-    if (fromWindow) {
-      console.log('[v0] Using Google Script URL from window:', fromWindow)
-      return fromWindow
-    }
-    
-    // Si no, intenta directamente desde localStorage
+    if (fromWindow) return fromWindow
+
     const saved = localStorage.getItem('googleScriptUrl')
-    if (saved) {
-      console.log('[v0] Using Google Script URL from localStorage:', saved)
-      return saved
+    const backup = localStorage.getItem('googleScriptUrlBackup')
+    const url = saved || backup
+
+    if (url) {
+      ;(window as any).__googleScriptUrl = url
+      if (!saved) localStorage.setItem('googleScriptUrl', url)
+      return url
     }
   }
-  
-  // Por último, env var
+
   const envUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL
-  if (envUrl) {
-    console.log('[v0] Using Google Script URL from env')
-    return envUrl
-  }
-  
-  console.log('[v0] No Google Script URL configured, will use mock data')
+  if (envUrl) return envUrl
+
   return ""
 }
 
@@ -115,26 +109,16 @@ export const MOCK_BLOQUES: BloqueHorario[] = [
 
 async function apiFetch(action: string, params: Record<string, unknown> = {}) {
   const url = getGoogleScriptUrl()
-  if (!url) {
-    console.log("[v0] No Google Script URL configured, using mock data")
-    return null
-  }
-  
+  if (!url) return null
+
   const apiUrl = new URL(url)
   apiUrl.searchParams.set("action", action)
   Object.entries(params).forEach(([k, v]) => apiUrl.searchParams.set(k, String(v)))
-  
-  console.log("[v0] Fetching from Google Apps Script:", action, apiUrl.toString())
-  
+
   try {
     const res = await fetch(apiUrl.toString())
-    if (!res.ok) {
-      console.log("[v0] API error:", res.status, res.statusText)
-      return null
-    }
-    const data = await res.json()
-    console.log("[v0] Received from", action, ":", data)
-    return data
+    if (!res.ok) return null
+    return await res.json()
   } catch (err) {
     console.error("[v0] Fetch error:", err)
     return null
@@ -144,39 +128,78 @@ async function apiFetch(action: string, params: Record<string, unknown> = {}) {
 async function apiPost(action: string, body: unknown) {
   const url = getGoogleScriptUrl()
   if (!url) {
-    console.log("[v0] No Google Script URL configured")
     return null
   }
-  
-  console.log("[v0] POST to Google Apps Script:", action, body)
-  
+
   try {
-    // Google Apps Script requires form-urlencoded content type for CORS to work
-    // Convert the body to form data
-    const formData = new URLSearchParams()
-    formData.append("action", action)
-    formData.append("body", JSON.stringify(body))
-    
-    const res = await fetch(url, {
-      method: "POST",
-      body: formData,
+    // Google Apps Script requires GET requests to avoid CORS issues.
+    // We serialize ALL body fields as URL query parameters.
+    const apiUrl = new URL(url)
+    apiUrl.searchParams.set("action", action)
+
+    if (typeof body === 'object' && body !== null) {
+      for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+        if (value !== undefined && value !== null) {
+          // Arrays and objects are JSON-encoded; primitives are stringified directly
+          const serialized = typeof value === 'object' ? JSON.stringify(value) : String(value)
+          apiUrl.searchParams.set(key, serialized)
+        }
+      }
+    }
+
+    const urlStr = apiUrl.toString()
+    if (urlStr.length > 7000) {
+      console.warn("[v0] apiPost: URL is very long (" + urlStr.length + " chars). GAS may truncate it.")
+    }
+    console.log("[v0] apiPost: action=", action, "url length=", urlStr.length)
+    const res = await fetch(urlStr, {
+      method: "GET",
+      headers: { "Accept": "application/json" },
     })
+
     if (!res.ok) {
-      console.log("[v0] API error:", res.status, res.statusText)
       return null
     }
+
     const data = await res.json()
-    console.log("[v0] POST response:", data)
+    console.log("[v0] apiPost response for", action, ":", JSON.stringify(data))
+    // If the script returned an error object, treat it as a failure
+    if (data && typeof data === 'object' && data.error) {
+      console.error("[v0] apiPost server error:", data.error)
+      return null
+    }
     return data
   } catch (err) {
-    console.error("[v0] POST error:", err)
+    console.error("[v0] apiPost error:", err)
     return null
   }
 }
 
+/** Normalizes the `tipo` field of a modulo, handling case-insensitive matching
+ *  and detecting "recreo" from the etiqueta or id when tipo is missing/wrong. */
+function normalizeModuloTipo(m: Modulo): Modulo {
+  const validTipos = ["clase", "recreo", "teoria", "taller"] as const
+  let tipo = String(m.tipo || "").toLowerCase().trim()
+
+  // Map common variants
+  if (tipo === "teoría" || tipo === "teória") tipo = "teoria"
+  if (tipo.includes("recreo")) tipo = "recreo"
+  if (tipo.includes("taller")) tipo = "taller"
+
+  // If still not valid, try detecting from etiqueta or id
+  if (!validTipos.includes(tipo as any)) {
+    const hint = `${m.etiqueta || ""} ${m.id || ""}`.toLowerCase()
+    if (hint.includes("recreo")) tipo = "recreo"
+    else tipo = "clase" // default
+  }
+
+  return { ...m, tipo: tipo as Modulo["tipo"] }
+}
+
 export async function fetchModulos(): Promise<Modulo[]> {
   const data = await apiFetch("getModulos")
-  return data ?? MOCK_MODULOS
+  const raw: Modulo[] = data ?? MOCK_MODULOS
+  return raw.map(normalizeModuloTipo)
 }
 
 export async function fetchMaterias(): Promise<Materia[]> {
@@ -199,13 +222,82 @@ export async function fetchCursos(): Promise<Curso[]> {
   return data ?? MOCK_CURSOS
 }
 
-export async function fetchBloques(cursoId: string): Promise<BloqueHorario[]> {
-  const data = await apiFetch("getBloques", { cursoId })
-  return data ?? MOCK_BLOQUES.filter((b) => b.cursoId === cursoId)
+/**
+ * Normalizes bloque.moduloId so it matches the modulo.id returned by getModulos.
+ *
+ * The MODULOS sheet column A (id) may be a full string like "m1-lun 2 clase 0 07:40 08:40 mat1",
+ * while the Bloques sheet stores only the first token "m1-lun".
+ * This function resolves the full modulo id by matching the first whitespace-separated token.
+ * If no match is found, the original moduloId is kept.
+ */
+function normalizeBloqueModuloIds(bloques: BloqueHorario[], modulos: Modulo[]): BloqueHorario[] {
+  // Build lookup maps for fast matching
+  const idMap = new Map(modulos.map((m) => [m.id, m]))
+  const trimIdMap = new Map(modulos.map((m) => [String(m.id).trim(), m]))
+  const numeroMap = new Map(modulos.map((m) => [m.numero, m]))
+  // Map from structured prefix (e.g., "mod2") to modulo, only when prefix starts with "mod"
+  const prefixMap = new Map<string, Modulo>()
+  for (const m of modulos) {
+    const prefix = String(m.id).split(/\s+/)[0]
+    if (/^mod/i.test(prefix) && !prefixMap.has(prefix)) {
+      prefixMap.set(prefix, m)
+    }
+  }
+
+  return bloques.map((bloque) => {
+    const bid = String(bloque.moduloId ?? "")
+
+    // 1. Exact match
+    if (idMap.has(bid)) return bloque
+
+    // 2. Trimmed match
+    const trimmed = bid.trim()
+    const byTrim = trimIdMap.get(trimmed)
+    if (byTrim) return { ...bloque, moduloId: byTrim.id }
+
+    // 3. Numeric match (bloque moduloId might be just "2" or "18")
+    const asNumber = Number(trimmed)
+    if (!isNaN(asNumber)) {
+      const byNumero = numeroMap.get(asNumber)
+      if (byNumero) return { ...bloque, moduloId: byNumero.id }
+    }
+
+    // 4. Structured prefix match (only for "mod..." style IDs to avoid collisions with descriptive IDs)
+    const bPrefix = bid.split(/\s+/)[0]
+    if (/^mod/i.test(bPrefix)) {
+      const byPrefix = prefixMap.get(bPrefix)
+      if (byPrefix) return { ...bloque, moduloId: byPrefix.id }
+    }
+
+    return bloque
+  })
 }
 
-export async function saveBloques(bloques: BloqueHorario[]): Promise<void> {
-  await apiPost("saveBloques", { bloques })
+export async function fetchBloques(cursoId: string): Promise<BloqueHorario[]> {
+  const [data, modulos] = await Promise.all([
+    apiFetch("getBloques", { cursoId }),
+    fetchModulos(),
+  ])
+  const bloques: BloqueHorario[] = data ?? MOCK_BLOQUES.filter((b) => b.cursoId === cursoId)
+  return normalizeBloqueModuloIds(bloques, modulos)
+}
+
+// Fetch all bloques without filtering by course
+export async function fetchAllBloques(): Promise<BloqueHorario[]> {
+  const [data, modulos] = await Promise.all([
+    apiFetch("getAllBloques", {}),
+    fetchModulos(),
+  ])
+  console.log("[v0] fetchAllBloques raw data from server:", JSON.stringify(data?.slice?.(0, 3)), "total:", data?.length ?? 0)
+  const bloques: BloqueHorario[] = data ?? MOCK_BLOQUES
+  const normalized = normalizeBloqueModuloIds(bloques, modulos)
+  console.log("[v0] fetchAllBloques after normalize:", normalized.length, "bloques. Sample:", JSON.stringify(normalized.slice(0, 2)))
+  return normalized
+}
+
+export async function saveBloques(bloques: BloqueHorario[]): Promise<boolean> {
+  const result = await apiPost("saveBloques", { bloques })
+  return !!result
 }
 
 export async function deleteBloque(bloqueId: string): Promise<void> {
@@ -264,7 +356,7 @@ export async function createModulo(modulo: Omit<Modulo, 'id'>): Promise<Modulo |
   return result ?? newModulo
 }
 
-export async function updateModulo(id: string, updates: Partial<Omit<Modulo, 'id'>>): Promise<Modulo | null> {
+export async function updateModulo(id: string, updates: Partial<Omit<Modulo, 'id'>>): Promise<Partial<Modulo> & { success?: boolean } | null> {
   const result = await apiPost('updateModulo', { id, ...updates })
   return result
 }

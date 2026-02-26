@@ -1,5 +1,10 @@
 export type Condicion = "titular" | "suplente" | "provisional"
 
+export interface DocenteAsignacion {
+  docenteId: string
+  condicion: Condicion
+}
+
 export interface Docente {
   id: string
   nombre: string
@@ -42,9 +47,10 @@ export interface BloqueHorario {
   diaIndex: number // 0=Lunes, 4=Viernes
   moduloId: string
   materiaId: string
-  docenteId: string
+  docenteId: string // Titular (for backward compatibility)
+  docentes?: DocenteAsignacion[] // Array of docentes (titular + up to 2 suplentes)
   grupo?: "A" | "B" | null
-  condicion?: Condicion // Titular, Suplente, Provisional
+  condicion?: Condicion // Titular, Suplente, Provisional (legacy)
 }
 
 export interface HorarioCompleto {

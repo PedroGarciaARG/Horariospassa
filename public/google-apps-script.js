@@ -54,6 +54,8 @@ function doGet(e) {
       case "getBloques":
         const cursoId = e.parameter.cursoId || "";
         return getResponse(getBloques(cursoId));
+      case "getAllBloques":
+        return getResponse(getAllBloques());
       default:
         return getResponse({ error: "Unknown action: " + action }, 400);
     }
@@ -299,6 +301,7 @@ function getBloques(cursoId) {
         moduloId: String(row[3]).trim(),
         materiaId: String(row[4]).trim(),
         docenteId: String(row[5]).trim(),
+        docentes: row[5] ? [{ docenteId: String(row[5]).trim(), condicion: "titular" }] : [],
         grupo: row[6] ? String(row[6]).trim() || null : null,
       }))
       .filter(b => b.id);
@@ -307,6 +310,35 @@ function getBloques(cursoId) {
     return result;
   } catch (err) {
     Logger.log("Error in getBloques: " + err.toString());
+    return [];
+  }
+}
+
+// Fetch ALL bloques without filtering by course
+function getAllBloques() {
+  try {
+    const sheet = getSheet("Bloques");
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+    
+    const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    const result = data
+      .map((row) => ({
+        id: String(row[0]).trim(),
+        cursoId: String(row[1]).trim(),
+        diaIndex: row[2],
+        moduloId: String(row[3]).trim(),
+        materiaId: String(row[4]).trim(),
+        docenteId: String(row[5]).trim(),
+        docentes: row[5] ? [{ docenteId: String(row[5]).trim(), condicion: "titular" }] : [],
+        grupo: row[6] ? String(row[6]).trim() || null : null,
+      }))
+      .filter(b => b.id);
+    
+    Logger.log("getAllBloques returned " + result.length + " bloques: " + JSON.stringify(result));
+    return result;
+  } catch (err) {
+    Logger.log("Error in getAllBloques: " + err.toString());
     return [];
   }
 }
