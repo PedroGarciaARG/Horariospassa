@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { Docente, DocenteMateriaAsignacion, Materia, Curso, Modulo, BloqueHorario, DocenteAsignacion } from "@/types"
 import { DIAS, CONDICION_COLORS, CONDICION_LABELS, MODULO_TIPO_LABELS, MODULO_TIPO_COLORS } from "@/types"
-import { saveBloques, getDocenteCondicion } from "@/lib/api"
+import { saveBloquesForDay, getDocenteCondicion } from "@/lib/api"
 
 interface EditorHorariosProps {
   docentes: Docente[]
@@ -409,11 +409,12 @@ export function EditorHorarios({
   async function handleSaveAll() {
     setSaving(true)
     try {
-      const bloquesToSave = bloques.filter((b) => b.cursoId === selectedCursoId)
-      console.log("[v0] handleSaveAll: curso=", selectedCursoId, "bloques count=", bloquesToSave.length)
-      console.log("[v0] handleSaveAll: bloques=", JSON.stringify(bloquesToSave.map(b => ({ id: b.id, moduloId: b.moduloId, materiaId: b.materiaId, docentes: b.docentes, grupo: b.grupo }))))
-      const result = await saveBloques(bloquesToSave)
-      console.log("[v0] handleSaveAll: save result=", result)
+      // Send ALL bloques for the selected course so the backend replaces the full
+      // week at once and does not lose data from days other than Monday.
+      const bloquesToSave = bloques.filter(
+        (b) => String(b.cursoId) === String(selectedCursoId)
+      )
+      const result = await saveBloquesForDay(selectedCursoId, 0, bloquesToSave)
       if (result) {
         setSaved(true)
         if (onBloquesSaved) await onBloquesSaved()
