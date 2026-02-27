@@ -299,6 +299,7 @@ export function MateriasManager({
                         >
                           <option value="">Seleccionar rol...</option>
                           <option value="titular">Titular</option>
+                          <option value="titular_interino">Titular Interino</option>
                           <option value="suplente">Suplente</option>
                           <option value="provisional">Provisional</option>
                         </select>

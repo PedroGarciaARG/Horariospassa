@@ -161,8 +161,8 @@ export function VistaImprimible({
                         )
                       }
                       const cellBloques = getBloquesForCell(diaIndex, modulo.id)
-                      const printColors: Record<string, string> = { titular: "#1e40af", suplente: "#166534", provisional: "#991b1b" }
-                      const printLabels: Record<string, string> = { titular: "T", suplente: "S", provisional: "P" }
+                      const printColors: Record<string, string> = { titular: "#1e40af", titular_interino: "#92400e", suplente: "#166534", provisional: "#991b1b" }
+                      const printLabels: Record<string, string> = { titular: "T", titular_interino: "T.I", suplente: "S", provisional: "P" }
 
                       function renderBloqueContent(bloque: typeof cellBloques[0]) {
                         const mat = materias.find(m => m.id === bloque.materiaId)

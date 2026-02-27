@@ -16,13 +16,13 @@ import { DIAS, CONDICION_COLORS, CONDICION_LABELS } from "@/types"
 import { getDocenteCondicion } from "@/lib/api"
 
 const DOCENTE_BORDER_COLORS: Record<string, string> = {
-  titular: "#3b82f6", suplente: "#22c55e", provisional: "#ef4444",
+  titular: "#3b82f6", titular_interino: "#f59e0b", suplente: "#22c55e", provisional: "#ef4444",
 }
 const DOCENTE_BG_COLORS: Record<string, string> = {
-  titular: "#eff6ff", suplente: "#f0fdf4", provisional: "#fef2f2",
+  titular: "#eff6ff", titular_interino: "#fffbeb", suplente: "#f0fdf4", provisional: "#fef2f2",
 }
 const DOCENTE_TEXT_COLORS: Record<string, string> = {
-  titular: "#1e40af", suplente: "#166534", provisional: "#991b1b",
+  titular: "#1e40af", titular_interino: "#92400e", suplente: "#166534", provisional: "#991b1b",
 }
 
 function DocenteBloqueCell({ bloque, materia, curso, selectedDocenteId }: {
@@ -48,7 +48,7 @@ function DocenteBloqueCell({ bloque, materia, curso, selectedDocenteId }: {
         className="mt-1 inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded"
         style={{ color: DOCENTE_TEXT_COLORS[cond], backgroundColor: `${DOCENTE_BORDER_COLORS[cond]}20` }}
       >
-        {cond === "titular" ? "Titular" : cond === "suplente" ? "Suplente" : "Provisional"}
+        {cond === "titular" ? "Titular" : cond === "titular_interino" ? "Titular Interino" : cond === "suplente" ? "Suplente" : "Provisional"}
       </span>
       {bloque.grupo && (
         <span className="ml-1 text-xs font-bold" style={{ color: "#0B6B2E" }}>

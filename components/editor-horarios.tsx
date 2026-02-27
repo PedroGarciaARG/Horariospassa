@@ -72,7 +72,7 @@ function DraggableBloque({
   }
 
   // Build the full list of docentes with their condicion from the bloque
-  const docenteEntries: { docente: Docente; condicion: "titular" | "suplente" | "provisional" }[] = []
+  const docenteEntries: { docente: Docente; condicion: Condicion }[] = []
   if (bloque.docentes && bloque.docentes.length > 0) {
     for (const da of bloque.docentes) {
       const d = allDocentes.find((doc) => doc.id === da.docenteId)
@@ -89,21 +89,24 @@ function DraggableBloque({
 
   // Condicion color mapping for the left border
   const BORDER_COLORS: Record<string, string> = {
-    titular: "#3b82f6",    // blue
-    suplente: "#22c55e",   // green
-    provisional: "#ef4444", // red
+    titular: "#3b82f6",           // blue
+    titular_interino: "#f59e0b",  // amber
+    suplente: "#22c55e",          // green
+    provisional: "#ef4444",       // red
   }
 
   const TEXT_COLORS: Record<string, string> = {
-    titular: "#1e40af",    // blue-800
-    suplente: "#166534",   // green-800
-    provisional: "#991b1b", // red-800
+    titular: "#1e40af",           // blue-800
+    titular_interino: "#92400e",  // amber-800
+    suplente: "#166534",          // green-800
+    provisional: "#991b1b",       // red-800
   }
 
   const BG_COLORS: Record<string, string> = {
-    titular: "#dbeafe",    // blue-100
-    suplente: "#dcfce7",   // green-100
-    provisional: "#fee2e2", // red-100
+    titular: "#dbeafe",           // blue-100
+    titular_interino: "#fef3c7",  // amber-100
+    suplente: "#dcfce7",          // green-100
+    provisional: "#fee2e2",       // red-100
   }
 
   return (
@@ -145,7 +148,7 @@ function DraggableBloque({
           >
             <span className="truncate">{docente.apellido}, {docente.nombre?.[0] ?? ""}.</span>
             <span className="ml-auto text-[10px] opacity-70 shrink-0">
-              {condicion === "titular" ? "Tit" : condicion === "suplente" ? "Sup" : "Prov"}
+              {condicion === "titular" ? "Tit" : condicion === "titular_interino" ? "T.Int" : condicion === "suplente" ? "Sup" : "Prov"}
             </span>
           </div>
         ))}
@@ -233,7 +236,7 @@ export function EditorHorarios({
   const [editingCell, setEditingCell] = useState<{ diaIndex: number; moduloId: string } | null>(null)
   const [formMateria, setFormMateria] = useState("")
   const [formTitular, setFormTitular] = useState("") // Profesor principal
-  const [formTitularCondicion, setFormTitularCondicion] = useState<"titular" | "provisional">("titular")
+  const [formTitularCondicion, setFormTitularCondicion] = useState<"titular" | "titular_interino" | "provisional">("titular")
   const [formSuplentes, setFormSuplentes] = useState<string[]>(["", ""]) // Up to 2 suplentes
   const [formGrupo, setFormGrupo] = useState<"A" | "B" | "">("")
   const [dragConflict, setDragConflict] = useState("")
@@ -304,9 +307,9 @@ export function EditorHorarios({
     
     // Load existing docentes
     const docentesList = existing?.docentes || []
-    const titularEntry = docentesList.find(d => d.condicion === "titular" || d.condicion === "provisional")
+    const titularEntry = docentesList.find(d => d.condicion === "titular" || d.condicion === "titular_interino" || d.condicion === "provisional")
     const titular = titularEntry?.docenteId ?? existing?.docenteId ?? ""
-    const titularCond = titularEntry?.condicion === "provisional" ? "provisional" : "titular"
+    const titularCond: "titular" | "titular_interino" | "provisional" = titularEntry?.condicion === "provisional" ? "provisional" : titularEntry?.condicion === "titular_interino" ? "titular_interino" : "titular"
     const suplentes = docentesList.filter(d => d.condicion === "suplente").map(d => d.docenteId)
     
     setFormTitular(titular)
@@ -479,7 +482,7 @@ export function EditorHorarios({
 
       {/* Legend */}
       <div className="flex items-center gap-4 flex-wrap text-xs">
-        {(["titular", "suplente", "provisional"] as const).map((c) => (
+        {(["titular", "titular_interino", "suplente", "provisional"] as const).map((c) => (
           <span key={c} className={`px-2 py-0.5 rounded border font-medium ${CONDICION_COLORS[c]}`}>
             {CONDICION_LABELS[c]}
           </span>
@@ -598,7 +601,7 @@ export function EditorHorarios({
                                         const d = docentes.find(doc => doc.id === da.docenteId)
                                         return d ? (
                                           <p key={d.id + i} className="text-[10px] leading-tight mt-0.5 truncate" style={{
-                                            color: da.condicion === "titular" ? "#1e40af" : da.condicion === "suplente" ? "#166534" : "#991b1b"
+                                            color: da.condicion === "titular" ? "#1e40af" : da.condicion === "titular_interino" ? "#92400e" : da.condicion === "suplente" ? "#166534" : "#991b1b"
                                           }}>
                                             {d.apellido}, {d.nombre?.[0]}.
                                           </p>
@@ -677,7 +680,7 @@ export function EditorHorarios({
               <Label>Materia</Label>
               <Select
                 value={formMateria}
-                onValueChange={(v) => { setFormMateria(v); setFormTitular(""); setFormTitularCondicion("titular"); setFormSuplentes(["", ""]); setFormGrupo("") }}
+                onValueChange={(v: string) => { setFormMateria(v); setFormTitular(""); setFormTitularCondicion("titular"); setFormSuplentes(["", ""]); setFormGrupo("") }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar materia" />
@@ -691,11 +694,11 @@ export function EditorHorarios({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="font-semibold" style={{ color: formTitularCondicion === "provisional" ? "#991b1b" : "#1e40af" }}>
-                {formTitularCondicion === "provisional" ? "Profesor Provisional *" : "Profesor Titular *"}
+              <Label className="font-semibold" style={{ color: formTitularCondicion === "provisional" ? "#991b1b" : formTitularCondicion === "titular_interino" ? "#92400e" : "#1e40af" }}>
+                {formTitularCondicion === "provisional" ? "Profesor Provisional *" : formTitularCondicion === "titular_interino" ? "Profesor Titular Interino *" : "Profesor Titular *"}
               </Label>
               <Select value={formTitular} onValueChange={setFormTitular} disabled={!formMateria}>
-                <SelectTrigger style={{ borderColor: formTitularCondicion === "provisional" ? "#fca5a5" : "#93c5fd" }}>
+                <SelectTrigger style={{ borderColor: formTitularCondicion === "provisional" ? "#fca5a5" : formTitularCondicion === "titular_interino" ? "#fcd34d" : "#93c5fd" }}>
                   <SelectValue placeholder="Seleccionar profesor" />
                 </SelectTrigger>
                 <SelectContent>
@@ -716,7 +719,7 @@ export function EditorHorarios({
               </Select>
               <div className="flex items-center gap-2 mt-1">
                 <Label className="text-xs text-muted-foreground shrink-0">{"Condici\u00f3n:"}</Label>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setFormTitularCondicion("titular")}
@@ -727,6 +730,17 @@ export function EditorHorarios({
                     }
                   >
                     Titular
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormTitularCondicion("titular_interino")}
+                    className="text-xs font-medium px-2 py-1 rounded border transition-colors"
+                    style={formTitularCondicion === "titular_interino"
+                      ? { backgroundColor: "#fef3c7", color: "#92400e", borderColor: "#fcd34d" }
+                      : { backgroundColor: "transparent", color: "#6b7280", borderColor: "#d1d5db" }
+                    }
+                  >
+                    Titular Interino
                   </button>
                   <button
                     type="button"
