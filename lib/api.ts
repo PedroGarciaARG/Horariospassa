@@ -1,5 +1,11 @@
 import type { Docente, DocenteMateriaAsignacion, Materia, Curso, Modulo, BloqueHorario } from "@/types"
 
+// Default Google Apps Script URL – hardcoded so the user does not need to
+// re-enter it on every session. It can still be overridden via localStorage
+// or the NEXT_PUBLIC_GOOGLE_SCRIPT_URL env var.
+const DEFAULT_GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbwtulIrzBWw842z-6GbiYZDDSlu0GLsOEKbJnAch9ApSEDCW947y-h5cW0WrcH354uq/exec"
+
 // Get Google Script URL from window.__googleScriptUrl or localStorage
 function getGoogleScriptUrl() {
   if (typeof window !== 'undefined') {
@@ -20,7 +26,7 @@ function getGoogleScriptUrl() {
   const envUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL
   if (envUrl) return envUrl
 
-  return ""
+  return DEFAULT_GOOGLE_SCRIPT_URL
 }
 
 // ---- Mock data for development / when no Google Script URL is set ----
