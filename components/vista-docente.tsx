@@ -128,9 +128,9 @@ export function VistaDocente({
               <SelectValue placeholder="Seleccionar docente" />
             </SelectTrigger>
             <SelectContent>
-              {docentes.map((d) => (
+              {[...docentes].sort((a, b) => (a.apellido ?? '').localeCompare(b.apellido ?? '', 'es') || (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es')).map((d) => (
                 <SelectItem key={d.id} value={d.id}>
-                  {d.apellido}, {d.nombre}
+                  {d.apellido ?? ''}, {d.nombre ?? ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -146,7 +146,7 @@ export function VistaDocente({
               className="rounded-full w-14 h-14 flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
               style={{ background: "#0B6B2E" }}
             >
-              {docente.apellido[0]}
+              {(docente.apellido ?? '?')[0]}
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-xl font-bold">

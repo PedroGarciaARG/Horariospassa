@@ -167,7 +167,7 @@ export function DocentesManager({ docentes, onDocentesChange, onBack }: Docentes
             No hay docentes. Crea uno para comenzar.
           </Card>
         ) : (
-          docentes.map((docente) => (
+          [...docentes].sort((a, b) => (a.apellido ?? '').localeCompare(b.apellido ?? '', 'es') || (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es')).map((docente) => (
             <Card
               key={docente.id}
               className="p-4 border border-border flex items-center justify-between hover:bg-muted/50 transition"

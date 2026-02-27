@@ -37,8 +37,8 @@ type View = "dashboard" | "editor" | "docente" | "estadisticas" | "excel" | "imp
 export default function Home() {
   const { isAuthenticated, isLoading, login, logout } = useAuth()
   const urlReady = useGoogleScriptUrl() // Load Google Script URL from localStorage
-  const [view, setView] = useState<View>("config")
-  const [googleScriptConfigured, setGoogleScriptConfigured] = useState(false)
+  const [view, setView] = useState<View>("dashboard")
+  const [googleScriptConfigured, setGoogleScriptConfigured] = useState(true)
 
   // Data state
   const [docentes, setDocentes] = useState<Docente[]>(MOCK_DOCENTES)

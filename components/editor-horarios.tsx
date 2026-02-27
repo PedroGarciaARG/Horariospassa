@@ -428,8 +428,8 @@ export function EditorHorarios({
   }
 
   const selectedMateria = materias.find((m) => m.id === formMateria)
-  // Show all teachers - condition (Titular/Suplente/Provisional) varies by course, not by subject
-  const filteredDocentes = docentes
+  // Show all teachers sorted alphabetically - condition varies by course, not by subject
+  const filteredDocentes = [...docentes].sort((a, b) => (a.apellido ?? '').localeCompare(b.apellido ?? '', 'es') || (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es'))
 
 
 
@@ -683,7 +683,7 @@ export function EditorHorarios({
                   <SelectValue placeholder="Seleccionar materia" />
                 </SelectTrigger>
                 <SelectContent>
-                  {materias.map((m) => (
+                  {[...materias].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es')).map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
                   ))}
                 </SelectContent>

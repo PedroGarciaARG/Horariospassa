@@ -211,7 +211,7 @@ export function MateriasManager({
             {materias.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay materias</p>
             ) : (
-              materias.map((materia) => (
+              [...materias].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es')).map((materia) => (
                 <div
                   key={materia.id}
                   className={`p-2 rounded border cursor-pointer transition ${
