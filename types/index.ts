@@ -1,4 +1,4 @@
-export type Condicion = "titular" | "suplente" | "provisional"
+export type Condicion = "titular" | "titular_interino" | "suplente" | "provisional"
 
 export interface DocenteAsignacion {
   docenteId: string
@@ -65,12 +65,14 @@ export const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 
 export const CONDICION_LABELS: Record<Condicion, string> = {
   titular: "Titular",
+  titular_interino: "Titular Interino",
   suplente: "Suplente",
   provisional: "Provisional",
 }
 
 export const CONDICION_COLORS: Record<Condicion, string> = {
   titular: "bg-blue-100 text-blue-800 border-blue-200",
+  titular_interino: "bg-amber-100 text-amber-800 border-amber-200",
   suplente: "bg-green-100 text-green-800 border-green-200",
   provisional: "bg-red-100 text-red-800 border-red-200",
 }
